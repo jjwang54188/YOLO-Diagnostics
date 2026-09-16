@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+  <title>YOLO 问题分析室</title>
+  <style>
+    :root {
+      font-family: system-ui, "Noto Sans CJK SC", sans-serif;
+      color: #19302e;
+      background: #f3f5f1;
+      font-size: 15px;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+    }
+    header {
+      background: #163e39;
+      color: #fff;
+      padding: 30px max(24px, calc((100vw - 1440px) / 2));
+      border-bottom: 5px solid #bfdf72;
+    }
+    header small {
+      color: #bfdf72;
+      letter-spacing: 3px;
+    }
+    h1 {
+      font-size: 30px;
+      margin: 10px 0;
+    }
+    header p {
+      color: #c5d8d2;
+      margin: 0;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 1488px;
+      margin: auto;
+      padding: 24px;
+    }
+    h2 {
+      font-size: 21px;
+      margin: 0 0 16px;
+    }
+    h3 {
+      font-size: 16px;
+    }
+    p {
+      line-height: 1.7;
+    }
+    .muted,
+    small {
+      color: #5d716a;
+    }
+    .toolbar {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: #f3f5f1f5;
+      padding: 14px 0;
+      z-index: 2;
+    }
+    select,
+    input,
+    button {
+      font: inherit;
+      border: 1px solid #bbccc3;
+      border-radius: 8px;
+      padding: 9px 12px;
+      background: white;
+      color: inherit;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:hover {
+      background: #edf4da;
+    }
+    label {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    a {
+      color: #237461;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 14px 0 24px;
+    }
+    .card,
+    section {
+      background: #fff;
+      border: 1px solid #dce5db;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .card strong {
+      display: block;
+      font-size: 30px;
+      margin: 8px 0;
+    }
+    .card span {
+      font-size: 13px;
+      color: #64756a;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 20px;
+    }
+    section {
+      margin-bottom: 20px;
+      min-width: 0;
+    }
+    .scroll {
+      overflow: auto;
+      max-height: 500px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    td,
+    th {
+      padding: 11px 9px;
+      border-bottom: 1px solid #e7ece5;
+      text-align: right;
+    }
+    th {
+      background: #f5f8f0;
+      position: sticky;
+      top: 0;
+    }
+    td:first-child,
+    th:first-child {
+      text-align: left;
+    }
+    tr.active {
+      background: #edf6d9;
+    }
+    tr[data-class] {
+      cursor: pointer;
+    }
+    tr[data-class]:hover {
+      background: #f3f7eb;
+    }
+    .bad {
+      color: #b54439;
+    }
+    .good {
+      color: #237461;
+    }
+    .barline {
+      display: grid;
+      grid-template-columns: 100px 1fr 64px;
+      gap: 12px;
+      align-items: center;
+      margin: 15px 0;
+    }
+    .bar {
+      height: 9px;
+      background: #edf1e8;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar i {
+      height: 100%;
+      display: block;
+      background: #4c8571;
+    }
+    .note {
+      border-left: 3px solid #bbd984;
+      background: #f7f9f2;
+      padding: 12px 15px;
+      margin: 12px 0;
+    }
+    .note strong {
+      display: block;
+      margin: 6px 0;
+    }
+    .tag {
+      font-size: 12px;
+      background: #e8eedb;
+      padding: 3px 7px;
+      border-radius: 5px;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .sample {
+      border: 1px solid #dce5db;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .sample summary {
+      padding: 14px;
+      cursor: pointer;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .views {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      background: #f5f7f2;
+    }
+    .views canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #ddd;
+    }
+    .viewtitle {
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      margin: 14px 0;
+    }
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 5px;
+    }
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 18px 0;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-height: 360px;
+      overflow: auto;
+      font-size: 12px;
+      background: #f6f8f1;
+      padding: 16px;
+    }
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .chart {
+      width: 100%;
+      height: 150px;
+    }
+    .empty {
+      padding: 30px;
+      text-align: center;
+      color: #657363;
+    }
+    .wide {
+      grid-column: 1/-1;
+    }
+    footer {
+      padding: 20px 0 40px;
+      color: #6e7d70;
+      font-size: 12px;
+    }
+    @media (max-width: 950px) {
+      .layout,
+      .gallery,
+      .two {
+        grid-template-columns: 1fr;
+      }
+      .cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      main {
+        padding: 14px;
+      }
+      .toolbar {
+        position: static;
+      }
+    }
+    @media (max-width: 500px) {
+      .cards {
+        grid-template-columns: 1fr 1fr;
+      }
+      .card {
+        padding: 12px;
+      }
+      .card strong {
+        font-size: 24px;
+      }
+    }
+  </style>
+  <header>
+    <small>MODEL DIAGNOSTICS / 本地证据报告</small>
+    <h1>YOLO 问题分析室</h1>
+    <p>从“个别物品识别差”，追溯到具体图片、错误类型与可验证的改进方向。</p>
+  </header>
+  <main>
+    <div class="toolbar">
+      <label
+        >查看模型
+        <select id="model"></select></label
+      ><label
+        >关注类别
+        <select id="class">
+          <option value="-1">全部类别</option>
+        </select></label
+      ><button id="reset">重置筛选</button
+      ><span id="context" class="muted"></span>
+    </div>
+    <section id="diagnosis-summary">
+      <h2>诊断结论总览</h2>
+      <p id="diagnosis-scope"></p>
+      <div id="diagnosis-counts" class="cards"></div>
+      <p id="root-cause-status" class="note"></p>
+      <p>
+        <a href="#confirmed">已确认的证据</a> ·
+        <a href="#unconfirmed">待验证病因</a> ·
+        <a href="#actions">修订与重训建议</a> ·
+        <a href="#data-coverage">还缺哪些数据</a> ·
+        <a href="#methods">依据与算法</a>
+      </p>
+      <p>
+        以下证据和建议以当前模型为主；模型选择器只切换下方指标和图片。根因不因切换模型自动改变。
+      </p>
+    </section>
+    <section id="problem-intro">
+      <h2>这次到底在分析什么</h2>
+      <p id="problem-text"></p>
+      <div id="model-meaning" class="note"></div>
+      <h3>先给你一句话总结</h3>
+      <p id="plain-summary"></p>
+      <details>
+        <summary>这些专业词是什么意思？</summary>
+        <div id="term-guide"></div>
+      </details>
+    </section>
+    <div id="quality"></div>
+    <div id="cards" class="cards"></div>
+    <div class="layout">
+      <section>
+        <h2>01 / 先看结论：哪些类别最值得检查</h2>
+        <p class="muted">
+          先看上面的“这次到底在分析什么”和“人工标签说明”。提供的 train
+          分组尚未确认是该权重训练数据。点击类别查看错误图片。P / R
+          使用本报告固定置信度；AP 使用低阈值预测的完整排序。ΔAP
+          始终是当前减对照的 AP50–95 百分点差。
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>类别</th>
+                <th>提供的 train 实例</th>
+                <th>评估实例</th>
+                <th>P</th>
+                <th>R</th>
+                <th>FN</th>
+                <th>FP</th>
+                <th>AP50</th>
+                <th>AP50–95</th>
+                <th>较对照 ΔAP</th>
+              </tr>
+            </thead>
+            <tbody id="classes"></tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h2>02 / 错误类型的影响</h2>
+        <p class="muted">
+          TIDE（错误影响分析）@ IoU 0.50：假设修正某类错误后 AP50
+          可提升多少个百分点。各项不可简单相加，也不能直接证明训练原因。这是全数据集分析，不随类别筛选。
+        </p>
+        <div id="tide"></div>
+        <h3>容易和谁混淆</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>真实类别</th>
+                <th>预测类别</th>
+                <th>次数</th>
+              </tr>
+            </thead>
+            <tbody id="confusions"></tbody>
+          </table>
+        </div>
+        <p class="muted">
+          混淆表：真实类别被模型判成另一类别的次数；FN=漏掉或错分类的人工目标，FP=多出来或错分类的预测，TP=类别和位置都匹配。TIDE
+          使用自己的匹配规则，其漏检类别与图片 FN 定义不同。
+        </p>
+      </section>
+      <section>
+        <h2>03 / 阈值是否掩盖了目标</h2>
+        <p class="muted">
+          同一批预测重新计数，不重复运行模型。降低阈值可能找回目标，也可能增加误报；不能只看召回率。
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>置信度</th>
+                <th>TP</th>
+                <th>FP</th>
+                <th>FN</th>
+                <th>P</th>
+                <th>R</th>
+              </tr>
+            </thead>
+            <tbody id="thresholds"></tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h2>04 / 什么条件下更容易出错</h2>
+        <p class="muted">
+          选择单个类别后查看目标尺寸和边缘位置。尺寸是缩放到推理分辨率后的目标短边；各维度重复统计同一批目标，不能相加。
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>条件</th>
+                <th>实例</th>
+                <th>未正确检出</th>
+                <th>R</th>
+              </tr>
+            </thead>
+            <tbody id="slices"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="wide">
+        <h2>05 / 问题图片逐张复核</h2>
+        <p class="muted" id="comparison"></p>
+        <div class="toolbar" style="position: static">
+          <label
+            >错误筛选
+            <select id="error">
+              <option value="errors">有漏检或误报</option>
+              <option value="fn">未正确检出（FN）</option>
+              <option value="fp">多余或错类预测（FP）</option>
+              <option value="regressed">对照检出、当前没检出</option>
+              <option value="improved">当前检出、对照没检出</option>
+              <option value="all">所有图片</option>
+            </select></label
+          ><label
+            >图片名 <input id="search" placeholder="输入文件名的一部分"
+          /></label>
+          <label
+            ><input
+              type="checkbox"
+              id="context-predictions"
+              checked
+            />显示其他类别预测（检查错分类）</label
+          >
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background: #2aa96b"></i>标注</span
+          ><span
+            ><i class="dot" style="background: #ef5447"></i
+            >未正确检出的标注</span
+          ><span
+            ><i class="dot" style="background: #13a7c7"></i
+            >预测（带置信度）</span
+          >
+        </div>
+        <div class="pager">
+          <button id="prev">上一页</button><span id="page"></span
+          ><button id="next">下一页</button>
+        </div>
+        <div id="gallery" class="gallery"></div>
+      </section>
+      <section class="wide" id="confirmed">
+        <h2>06 / 已确认的表现与数据问题</h2>
+        <p>
+          每项均有证据编号、结论边界和图片入口。确认“发生了什么”不等于确认“为什么发生”。
+        </p>
+        <div id="facts"></div>
+      </section>
+      <section class="wide" id="unconfirmed">
+        <h2>07 / 尚未确诊的病因与竞争解释</h2>
+        <div id="hypotheses"></div>
+      </section>
+      <section class="wide" id="actions">
+        <h2>08 / 数据修订、推理与重训建议</h2>
+        <p>
+          建议尚未执行。先保存版本、复核标签，再做单变量实验；使用独立测试集验收。
+        </p>
+        <div id="action-list"></div>
+        <p>
+          <a href="action-plan.json" download>下载结构化证据与行动计划 JSON</a>
+          · 可在诊断助手的「AI 辅助诊断」中选此报告继续提问。
+        </p>
+      </section>
+      <section class="wide" id="data-coverage">
+        <h2>09 / 资料完整性与诊断边界</h2>
+        <p>
+          已提供不等于已验证；资料项数量不是诊断准确率。缺少现场样本或版本关系时，不能确诊现场根因。
+        </p>
+        <div id="coverage"></div>
+        <details>
+          <summary>每类覆盖与新旧回归计数</summary>
+          <div id="class-coverage"></div>
+        </details>
+        <details>
+          <summary>用户场景分组（当前模型）</summary>
+          <div id="scene-slices"></div>
+        </details>
+        <details>
+          <summary>用户补充资料与来源</summary>
+          <pre id="support"></pre>
+        </details>
+      </section>
+      <section class="wide" id="methods">
+        <h2>10 / 诊断依据与算法</h2>
+        <div id="method-list"></div>
+      </section>
+      <section>
+        <h2>11 / 原始训练记录与数据审计</h2>
+        <div id="history"></div>
+        <div id="audit"></div>
+        <details>
+          <summary>数据问题与重复图片明细</summary>
+          <pre id="auditraw"></pre>
+        </details>
+        <details>
+          <summary>训练参数</summary>
+          <pre id="trainargs"></pre>
+        </details>
+        <details>
+          <summary>运行来源与可复现设置</summary>
+          <pre id="provenance"></pre>
+        </details>
+        <p>
+          <a href="report.json" download>下载完整 JSON</a> ·
+          <a href="review.csv" download>下载逐框复核清单 CSV</a>
+        </p>
+      </section>
+    </div>
+    <footer>
+      分析引擎：Ultralytics 原生指标 + TIDE。仅支持 YOLO
+      水平框目标检测。报告在本地读取，不上传图片。缺少真实现场失败样本时，不能保证覆盖现场问题。
+    </footer>
+  </main>
+  <script id="data" type="application/json">
+    __REPORT_DATA__
+  </script>
+  <script>
+    const D = JSON.parse(document.getElementById("data").textContent),
+      $ = (s) => document.getElementById(s);
+    const esc = (s) =>
+      String(s).replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c],
+      );
+    const pct = (x) => (x == null ? "—" : (100 * x).toFixed(1) + "%"),
+      fmt = (x) => Number(x).toFixed(2);
+    let page = 0;
+    const pageSize = 8;
+    D.models.forEach((m, i) =>
+      $("model").add(new Option(m.title + " · " + m.path.split("/").pop(), i)),
+    );
+    D.names.forEach((n, i) => $("class").add(new Option(n, i)));
+    function sum(rows) {
+      let r = { tp: 0, fp: 0, fn: 0 };
+      rows.forEach((x) => {
+        r.tp += x.tp;
+        r.fp += x.fp;
+        r.fn += x.fn;
+      });
+      r.precision = r.tp + r.fp ? r.tp / (r.tp + r.fp) : null;
+      r.recall = r.tp + r.fn ? r.tp / (r.tp + r.fn) : null;
+      return r;
+    }
+    const key = (r) => JSON.stringify(r.slice(0, 5));
+    function changed(i, type, c) {
+      if (D.models.length < 2) return false;
+      const a = D.models[0].evidence[i].fn,
+        b = D.models[1].evidence[i].fn;
+      const [x, y] = type === "regressed" ? [a, b] : [b, a];
+      const set = new Set(y.map(key));
+      return x.some((r) => (c < 0 || r[0] === c) && !set.has(key(r)));
+    }
+    function render() {
+      const mi = +$("model").value,
+        m = D.models[mi],
+        c = +$("class").value,
+        rows = m.thresholds[String(D.settings.conf)],
+        selected = c < 0 ? rows : [rows[c]],
+        s = sum(selected);
+      $("context").textContent =
+        `${D.samples.length} 张 ${D.settings.split} 图片 · conf ${D.settings.conf} · 匹配 IoU ${D.settings.match_iou}`;
+      $("cards").innerHTML = [
+        ["正确检出率 R", pct(s.recall), "在标注目标中正确找到的比例"],
+        ["未正确检出", s.fn, "包含漏检、错分类和匹配失败"],
+        ["多余 / 错类预测", s.fp, "相对于现有标注，不自动判定标注错"],
+        [
+          "AP50–95",
+          pct(c < 0 ? m.map50_95 : m.ap[c]?.ap50_95),
+          c < 0 ? "有评估标注的类别平均" : "该类别的定位与分类综合表现",
+        ],
+      ]
+        .map(
+          (x) =>
+            `<div class="card">${x[0]}<strong>${x[1]}</strong><span>${x[2]}</span></div>`,
+        )
+        .join("");
+      $("classes").innerHTML = rows
+        .map((r, i) => ({ r, i }))
+        .sort((a, b) => b.r.fn - a.r.fn)
+        .map(
+          ({ r, i }) =>
+            `<tr data-class="${i}" class="${i === c ? "active" : ""}"><td>${esc(D.names[i])}</td><td>${D.audit.provided_splits?.includes("train") || D.audit.counts.train.some((n) => n > 0) ? D.audit.counts.train[i] : "未提供"}</td><td>${r.tp + r.fn}</td><td>${pct(r.precision)}</td><td>${pct(r.recall)}</td><td class="bad">${r.fn}</td><td>${r.fp}</td><td>${pct(m.ap[i]?.ap50)}</td><td>${pct(m.ap[i]?.ap50_95)}</td><td>${D.models.length > 1 && m.ap[i] && D.models[1].ap[i] ? ((D.models[0].ap[i].ap50_95 - D.models[1].ap[i].ap50_95) * 100).toFixed(1) + " pp" : "—"}</td></tr>`,
+        )
+        .join("");
+      $("classes")
+        .querySelectorAll("tr")
+        .forEach(
+          (e) =>
+            (e.onclick = () => {
+              $("class").value = e.dataset.class;
+              page = 0;
+              render();
+            }),
+        );
+      const cross = D.audit.duplicates.filter(
+        (g) => new Set(g.map((x) => x.split)).size > 1,
+      );
+      $("quality").innerHTML = cross.length
+        ? `<div class="note"><strong>评估独立性存疑：${cross.length} 组相同图片跨分组</strong>所提供数据集存在分组重叠；尚需核对是否就是本模型的训练数据，不能据此认定独立泛化成绩。另有 ${D.audit.conflicting_labels.length} 组相同图片使用不同标注版本，详见数据审计。</div>`
+        : "";
+      let pairs = [];
+      m.confusion.forEach((row, p) =>
+        row.forEach((n, t) => {
+          if (
+            n &&
+            p < D.names.length &&
+            t < D.names.length &&
+            p !== t &&
+            (c < 0 || p === c || t === c)
+          )
+            pairs.push([t, p, n]);
+        }),
+      );
+      $("confusions").innerHTML =
+        pairs
+          .sort((a, b) => b[2] - a[2])
+          .map(
+            ([t, p, n]) =>
+              `<tr><td>${esc(D.names[t])}</td><td>${esc(D.names[p])}</td><td>${n}</td></tr>`,
+          )
+          .join("") || '<tr><td colspan="3">本阈值下没有跨类别匹配</td></tr>';
+      const labels = {
+          Cls: "分类错误",
+          Loc: "定位错误",
+          Both: "分类与定位",
+          Dupe: "重复检测",
+          Bkg: "背景误报",
+          Miss: "遗漏目标",
+        },
+        max = Math.max(1, ...Object.values(m.tide));
+      $("tide").innerHTML = Object.entries(m.tide)
+        .sort((a, b) => b[1] - a[1])
+        .map(
+          ([k, v]) =>
+            `<div class="barline"><span>${labels[k] || esc(k)}</span><div class="bar"><i style="width:${(Math.max(0, v) / max) * 100}%"></i></div><b>${fmt(v)}</b></div>`,
+        )
+        .join("");
+      $("thresholds").innerHTML = Object.entries(m.thresholds)
+        .map(([t, rs]) => {
+          let r = sum(c < 0 ? rs : [rs[c]]);
+          return `<tr class="${+t === D.settings.conf ? "active" : ""}"><td>${t}</td><td>${r.tp}</td><td>${r.fp}</td><td>${r.fn}</td><td>${pct(r.precision)}</td><td>${pct(r.recall)}</td></tr>`;
+        })
+        .join("");
+      let grouped = {};
+      Object.entries(m.slices).forEach(([k, v]) => {
+        let [id, dim, name] = k.split("|");
+        if (c < 0 || +id === c) {
+          let x = grouped[name] || (grouped[name] = [0, 0]);
+          x[0] += v[0];
+          x[1] += v[1];
+        }
+      });
+      $("slices").innerHTML = Object.entries(grouped)
+        .map(
+          ([k, v]) =>
+            `<tr><td>${esc(k)}</td><td>${v[0]}</td><td>${v[1]}</td><td>${pct(1 - v[1] / v[0])}</td></tr>`,
+        )
+        .join("");
+      $("comparison").textContent =
+        D.models.length > 1
+          ? "每张问题图片按四步看：原图是什么 → 人工标签框在哪里 → 当前模型怎么预测 → 对照模型怎么预测。红框表示人工标签没有被当前模型正确匹配，蓝框是模型预测。对照模型只是参考，不是人工真值。"
+          : "尚未提供不同的对照模型。当前报告可分析单模型；增加 --baseline 后可查看同图变化。";
+      ["regressed", "improved"].forEach(
+        (v) =>
+          ($("error").querySelector(`option[value="${v}"]`).disabled =
+            D.models.length < 2),
+      );
+      const type = $("error").value,
+        q = $("search").value.toLowerCase(),
+        has = (rs) => rs.some((r) => c < 0 || r[0] === c);
+      const list = D.samples.filter((im, i) => {
+        if (!im.path.toLowerCase().includes(q)) return false;
+        const ev = m.evidence[i];
+        if (type === "regressed" || type === "improved")
+          return changed(i, type, c);
+        if (type === "all") return c < 0 || has(im.gt) || has(m.predictions[i]);
+        return type === "errors" ? has(ev.fn) || has(ev.fp) : has(ev[type]);
+      });
+      page = Math.min(page, Math.max(0, Math.ceil(list.length / pageSize) - 1));
+      $("page").textContent =
+        `${list.length} 张符合条件 · 第 ${page + 1} / ${Math.max(1, Math.ceil(list.length / pageSize))} 页`;
+      $("prev").disabled = page === 0;
+      $("next").disabled = (page + 1) * pageSize >= list.length;
+      $("gallery").innerHTML =
+        list
+          .slice(page * pageSize, (page + 1) * pageSize)
+          .map((im) => {
+            const ev = m.evidence[im.id];
+            return `<details class="sample" open><summary>图片 #${im.id} · ${esc(im.path.split("/").pop())}<br><span class="muted">FN ${ev.fn.filter((r) => c < 0 || r[0] === c).length} · FP ${ev.fp.filter((r) => c < 0 || r[0] === c).length}</span></summary><div class="views"><div><div class="viewtitle">人工标签（红框=当前模型未正确匹配） <span>标签来自 data.yaml 对应的 TXT，不代表程序已经确认标签绝对正确</span></div><canvas data-id="${im.id}" data-view="gt" data-model="${mi}"></canvas></div>${D.models.map((mm, j) => `<div><div class="viewtitle">模型预测：${esc(mm.title)}（${esc(mm.path.split("/").pop())}） <span>conf &gt; ${D.settings.conf}</span></div><canvas data-id="${im.id}" data-view="pred" data-model="${j}"></canvas></div>`).join("")}${missDetails(im.id, c)}<small>${esc(im.path)}</small></div></details>`;
+          })
+          .join("") || '<div class="empty">没有符合条件的图片</div>';
+      $("gallery")
+        .querySelectorAll("canvas")
+        .forEach((canvas) => draw(canvas, c));
+      const history = m.history;
+      let html = history.length
+        ? `<p>记录 ${history.length} 个 epoch。曲线来自训练目录 results.csv，最后一个 epoch 不一定是 best.pt。</p>`
+        : "<p>没有找到 results.csv，仅能读取权重内保存的训练参数。</p>";
+      for (const [metric, title] of [
+        ["metrics/mAP50(B)", "验证 mAP50"],
+        ["train/cls_loss", "训练分类损失"],
+        ["val/cls_loss", "验证分类损失"],
+      ]) {
+        let vals = history
+          .map((r) => Number(r[metric]))
+          .filter(Number.isFinite);
+        if (vals.length > 1) {
+          let lo = Math.min(...vals),
+            hi = Math.max(...vals),
+            pts = vals
+              .map(
+                (v, i) =>
+                  `${(i / (vals.length - 1)) * 480},${120 - ((v - lo) / (hi - lo || 1)) * 100}`,
+              )
+              .join(" ");
+          html += `<h3>${title}</h3><svg class="chart" viewBox="0 0 500 145" role="img" aria-label="${title}随 epoch 变化"><polyline points="${pts}" fill="none" stroke="#4c8571" stroke-width="2"/><text x="0" y="140" font-size="11">epoch 1</text><text x="390" y="140" font-size="11">${history.length} / ${fmt(vals.at(-1))}</text></svg>`;
+        }
+      }
+      $("history").innerHTML = html;
+      $("audit").innerHTML = `<p>训练 / 验证 / 测试实例：${Object.values(
+        D.audit.counts,
+      )
+        .map((a) => a.reduce((x, y) => x + y, 0))
+        .join(
+          " / ",
+        )}<br>完全重复图片组：${D.audit.duplicates.length} · 标注/列表问题：${D.audit.issues.length} · 同图标注不同：${D.audit.conflicting_labels.length} 组</p><p class="muted">目前检测文件内容完全重复；相邻视频帧、近重复照片、遮挡程度与拍摄批次独立性需要进一步审核。清晰度和亮度测量已保存在 JSON，但没有用通用阈值直接判因。</p>`;
+      $("auditraw").textContent = JSON.stringify(
+        {
+          issues: D.audit.issues,
+          duplicates: D.audit.duplicates,
+          conflicting_labels: D.audit.conflicting_labels,
+        },
+        null,
+        2,
+      );
+      $("trainargs").textContent = JSON.stringify(m.train_args, null, 2);
+      $("provenance").textContent = JSON.stringify(
+        {
+          created: D.created,
+          data: D.data,
+          data_sha256: D.data_sha256,
+          model: m.path,
+          model_sha256: m.sha256,
+          class_remap: m.class_remap,
+          settings: D.settings,
+        },
+        null,
+        2,
+      );
+    }
+    function missDetails(id, c) {
+      return D.models
+        .map((m) => {
+          const contexts = (m.evidence[id].fn_context || []).filter(
+            (x) => c < 0 || x.gt[0] === c,
+          );
+          if (!contexts.length) return "";
+          return `<div class="note"><strong>${esc(m.path.split("/").pop())} 未匹配目标的候选证据</strong>${contexts
+            .map((x) => {
+              const q = x.candidate,
+                low = x.low_conf_candidate;
+              const lowText = low
+                ? `<p>阈值以下同类候选：${esc(D.names[low.class])} · conf ${low.conf.toFixed(3)} · IoU ${low.iou.toFixed(3)}。仅有候选，不保证降阈值后正确匹配。</p>`
+                : "";
+              if (!q)
+                return `<p>${esc(D.names[x.gt[0]])}：当前置信度下没有 IoU ≥ 0.10 的候选框。</p>${lowText}`;
+              const reason =
+                q.class !== x.gt[0]
+                  ? "候选类别与标注不同"
+                  : q.iou <= D.settings.match_iou
+                    ? "同类候选，但框重合不足"
+                    : "存在同类重叠候选，需检查一对一匹配竞争";
+              return `<p>${esc(D.names[x.gt[0]])} → ${esc(D.names[q.class])} · 置信度 ${q.conf.toFixed(3)} · IoU ${q.iou.toFixed(3)}<br>${reason}</p>${lowText}`;
+            })
+            .join(
+              "",
+            )}<small>候选取重合度最大的预测，仅用于解释证据，不替代原生匹配，也不自动判定标注错误。</small></div>`;
+        })
+        .join("");
+    }
+    function renderDiagnosis() {
+      const d = D.diagnosis;
+      if (!d) return;
+      const refs = (ids) =>
+        ids.map((id) => `<a href="#${esc(id)}">${esc(id)}</a>`).join("、") ||
+        "通用实验建议";
+      const bullets = (items) =>
+        `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+      const userText =
+        D.support?.context?.problem_description ||
+        "本次没有填写额外的问题描述。报告将根据数据集、人工标签和模型输出说明可确认的现象。";
+      $("problem-text").textContent = userText;
+      const mainFacts = d.facts
+        .filter((x) => x.category === "表现")
+        .slice(0, 4)
+        .map((x) => x.title)
+        .join("；");
+      $("plain-summary").textContent = mainFacts
+        ? `在本次选择的 ${D.samples.length} 张图片和当前参数下，确认出现了：${mainFacts}。这说明错误在这批图片中真实发生，但还不能说明它在所有现场图片中都会发生，也不能单凭这份报告确认训练根因。下一步应先看问题图片和人工标签，再按 A 编号执行实验。`
+        : "本次评估没有触发明显的类别错误；这不等于现场一定没有问题，还需要独立现场图片验证。";
+      $("term-guide").innerHTML =
+        `<p><b>人工标签：</b>人手为图片写下的参考框和类别，所有模型都用它比较。</p><p><b>模型预测：</b>模型自己画出的框、类别和置信度。</p><p><b>IoU：</b>两个框重叠得有多少；越高表示位置越接近。</p><p><b>TP：</b>类别和位置都对；<b>FN：</b>人工目标没有被正确找到或类别错；<b>FP：</b>多画了框或类别错。</p><p><b>Precision（精确率）：</b>模型说“找到了”的结果里有多少正确；<b>Recall（召回率）：</b>人工目标里有多少被找到。</p><p><b>AP/mAP：</b>把很多置信度阈值的表现综合起来；适合比较整体排序，不代表某个现场阈值。</p><p><b>TIDE：</b>把错误按分类、位置、背景等拆开，帮助安排检查顺序；不是病因证明。</p>`;
+      $("model-meaning").textContent =
+        `人工标签不是某一个模型的标签。它是这批图片在 data.yaml 对应 TXT 中的人工参考答案，当前模型和对照模型都使用同一套人工标签比较。它可能本身存在错误，所以报告会把标签问题列为待核实，不会把它自动当成绝对真理。当前任务：${D.settings.model_family_selected || "自动识别"} · ${D.settings.task || "目标检测"}。`;
+      $("diagnosis-scope").textContent = d.scope;
+      $("root-cause-status").textContent = d.root_cause_status;
+      $("diagnosis-counts").innerHTML = [
+        ["已确认的证据", d.facts.length],
+        ["待验证病因", d.hypotheses.length],
+        ["行动建议", d.actions.length],
+        ["当前已确诊根因", d.root_causes.length],
+      ]
+        .map(([k, v]) => `<div class="card">${k}<strong>${v}</strong></div>`)
+        .join("");
+      $("facts").innerHTML =
+        d.facts
+          .map(
+            (f) =>
+              `<div class="note" id="${f.id}"><span class="tag">${esc(f.id)} · ${esc(f.category)}</span><strong>${esc(f.title)}</strong><p>${esc(f.evidence)}</p><p><b>结论范围：</b>${esc(f.scope)}</p>${f.cases.map((id) => `<button data-evidence-image="${id}">查看图片 #${id}</button>`).join(" ")}</div>`,
+          )
+          .join("") || "本批数据未触发错误证据；不代表没有现场问题。";
+      $("facts")
+        .querySelectorAll("[data-evidence-image]")
+        .forEach(
+          (b) =>
+            (b.onclick = () => {
+              $("class").value = "-1";
+              $("error").value = "all";
+              $("search").value = D.samples[+b.dataset.evidenceImage].path
+                .split("/")
+                .pop();
+              page = 0;
+              render();
+              $("gallery").scrollIntoView({ behavior: "smooth" });
+            }),
+        );
+      $("hypotheses").innerHTML =
+        d.hypotheses
+          .map(
+            (h) =>
+              `<div class="note" id="${h.id}"><span class="tag">${h.id} · ${esc(h.status)}</span><strong>${esc(h.title)}</strong><p>依据：${refs(h.evidence_ids)}</p><b>仍缺证据</b>${bullets(h.missing)}<b>其他可能解释</b>${bullets(h.alternatives)}<p><b>如何验证：</b>${esc(h.experiment)}</p></div>`,
+          )
+          .join("") ||
+        "目前没有足够线索建立具体病因假设。请补充现场失败样本与训练记录。";
+      $("action-list").innerHTML = d.actions
+        .map(
+          (a) =>
+            `<div class="note" id="${a.id}"><span class="tag">${a.id} · ${esc(a.kind)} · ${esc(a.priority)}</span><strong>${esc(a.title)}</strong><p>依据：${refs(a.evidence_ids)}</p>${bullets(a.steps)}<p><b>验收条件：</b>${esc(a.acceptance)}</p><small>${esc(a.status)}</small></div>`,
+        )
+        .join("");
+      $("coverage").innerHTML = d.coverage
+        .map(
+          (x) =>
+            `<details><summary>${esc(x.name)} · ${esc(x.status)}</summary><p>优先级：${esc(x.priority)}；格式：${esc(x.format)}</p><p>${esc(x.use)}</p><p>当前支持：${esc(x.support)}</p></details>`,
+        )
+        .join("");
+      $("class-coverage").innerHTML =
+        `<table><tr><th>类别</th><th>图片数</th><th>目标数</th><th>退步</th><th>改善</th><th>覆盖提示</th></tr>${d.class_coverage.map((x) => `<tr><td>${esc(x.class)}</td><td>${x.images}</td><td>${x.instances}</td><td>${x.regressed}</td><td>${x.improved}</td><td>${esc(x.coverage)}</td></tr>`).join("")}</table>`;
+      $("scene-slices").innerHTML = d.scene_slices.length
+        ? `<p>分组来自用户填报，多个维度重复统计同一批目标，不可相加。组间差异是描述性关联，不能确诊因果。</p><table><tr><th>条件</th><th>类别</th><th>图片</th><th>目标</th><th>FN</th><th>R</th></tr>${d.scene_slices.map((x) => `<tr><td>${esc(x.dimension)}=${esc(x.value)}</td><td>${esc(x.class)}</td><td>${x.images}</td><td>${x.instances}</td><td>${x.fn}</td><td>${pct(x.recall)}</td></tr>`).join("")}</table>`
+        : "尚未提供逐图场景 CSV。";
+      $("support").textContent = JSON.stringify(D.support || {}, null, 2);
+      $("method-list").innerHTML = d.methods
+        .map(
+          (x) =>
+            `<details><summary>${esc(x.name)}</summary><p>${esc(x.algorithm)}</p><p><b>限制：</b>${esc(x.limit)}</p></details>`,
+        )
+        .join("");
+    }
+    renderDiagnosis();
+    function draw(canvas, c) {
+      const im = D.samples[+canvas.dataset.id],
+        m = D.models[+canvas.dataset.model],
+        isgt = canvas.dataset.view === "gt",
+        img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        let ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        let sx = img.width / im.width,
+          sy = img.height / im.height,
+          miss = new Set(m.evidence[im.id].fn.map(key)),
+          rows = isgt
+            ? im.gt
+            : m.predictions[im.id].filter((r) => r[5] > D.settings.conf);
+        ctx.lineWidth = 2;
+        ctx.font = "bold 13px system-ui";
+        rows
+          .filter(
+            (r) =>
+              c < 0 ||
+              r[0] === c ||
+              (!isgt && $("context-predictions").checked),
+          )
+          .forEach((r) => {
+            let [id, x1, y1, x2, y2] = r,
+              color = isgt
+                ? miss.has(key([id, ...r.slice(1).map(Math.fround)]))
+                  ? "#ef5447"
+                  : "#2aa96b"
+                : "#13a7c7";
+            let label = D.names[id] + (isgt ? "" : ` ${r[5].toFixed(2)}`);
+            ctx.strokeStyle = color;
+            ctx.strokeRect(x1 * sx, y1 * sy, (x2 - x1) * sx, (y2 - y1) * sy);
+            let y = Math.max(16, y1 * sy);
+            ctx.fillStyle = color;
+            ctx.fillRect(x1 * sx, y - 16, ctx.measureText(label).width + 8, 18);
+            ctx.fillStyle = "#fff";
+            ctx.fillText(label, x1 * sx + 4, y - 3);
+          });
+      };
+      img.src = im.image;
+    }
+    ["model", "class", "error", "context-predictions"].forEach(
+      (id) =>
+        ($(id).onchange = () => {
+          page = 0;
+          render();
+        }),
+    );
+    $("search").oninput = () => {
+      page = 0;
+      render();
+    };
+    $("prev").onclick = () => {
+      page--;
+      render();
+    };
+    $("next").onclick = () => {
+      page++;
+      render();
+    };
+    $("reset").onclick = () => {
+      $("class").value = -1;
+      $("search").value = "";
+      $("error").value = "errors";
+      page = 0;
+      render();
+    };
+    const initial = new URLSearchParams(location.search);
+    const initialClass = D.names.indexOf(initial.get("class"));
+    if (initialClass >= 0) $("class").value = initialClass;
+    if (
+      [...$("error").options].some(
+        (o) => o.value === initial.get("error") && !o.disabled,
+      )
+    )
+      $("error").value = initial.get("error");
+    $("search").value = initial.get("search") || "";
+    render();
+  </script>
+</html>

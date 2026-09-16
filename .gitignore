@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+data/
+reports/
+
+.env
+.env.*
+*.pt
+*.onnx
+*.engine
+*.log
+*.pyc

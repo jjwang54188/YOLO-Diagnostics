@@ -1,0 +1,10 @@
+{
+  "problem_description": "请替换：哪类物品，在什么场景，被识别成什么；发生频率和业务影响。不要把猜测写成已证实原因。",
+  "focus_classes": ["CA001", "CB003", "CC003", "CC004"],
+  "class_notes": {"CA001": "眼镜", "CB003": "面包", "CC003": "350ml 水", "CC004": "550ml 水。请记录真值由容量标签/SKU还是外观判定。"},
+  "deployment": {"imgsz": null, "conf": null, "iou": null, "max_det": null, "runtime": "请填写 Ultralytics/ONNX/TensorRT 版本", "precision": "FP32/FP16/INT8/未知", "preprocess": "裁剪范围、缩放/letterbox、RGB/BGR、旋转等；不确定请填未知", "camera": "设备、分辨率、曝光、白平衡、距离、采集日期"},
+  "dataset_provenance": {"current_training_version": "未知或真实版本/哈希", "baseline_training_version": "未知或真实版本/哈希", "evaluation_seen_in_training": "未知/是/否，并说明核验依据", "split_strategy": "按图片随机/视频批次/日期/相机划分", "label_review": "完整框/可见部分框规则，遮挡/难例口径，复核人和版本"},
+  "acceptance": {"minimum_precision": null, "minimum_recall": null, "false_positive_tolerance": "请填写可接受的误报数/频率及统计单位", "latency_ms": null},
+  "experiments": [],
+  "notes": "此模板含示例值，请先修改再作为资料使用。不要放 API Key、账号密码或无关个人信息。只填写有依据的内容。"
+}

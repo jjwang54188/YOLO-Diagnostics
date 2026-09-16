@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="app-token" content="__APP_TOKEN__" />
+    <title>YOLO 诊断助手</title>
+    <link rel="stylesheet" href="/ui/style.css" />
+  </head>
+  <body>
+    <aside>
+      <div class="brand">
+        <span class="logo">Y</span>
+        <div>
+          <strong>YOLO 诊断助手</strong><small>看懂问题，再改进模型</small>
+        </div>
+      </div>
+      <nav aria-label="主导航">
+        <button class="nav active" data-page="new">① 新建分析</button
+        ><button class="nav" data-page="task">② 任务进度</button
+        ><button class="nav" data-page="history">③ 历史报告</button
+        ><button class="nav" data-page="help">④ 使用与开发指南</button
+        ><button class="nav" data-page="materials">⑤ 数据清单与算法</button
+        ><button class="nav" data-page="ai">⑥ AI 辅助诊断</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span id="connection" class="badge">连接本地服务…</span>
+        <p>常规分析在本机完成<br />AI 内容经预览后才发送</p>
+      </div>
+    </aside>
+    <main>
+      <header>
+        <div>
+          <div class="eyebrow">LOCAL MODEL WORKSPACE</div>
+          <h1 id="page-title">新建一次模型分析</h1>
+          <p id="page-description">
+            选择模型和带标注的数据，找到哪些目标识别差，以及可以复核的证据。
+          </p>
+        </div>
+        <span class="pill">目标检测 · 本地运行</span>
+      </header>
+      <div id="notification" role="alert" hidden></div>
+      <section id="page-new" class="page">
+        <div class="intro">
+          <div>
+            <strong>先选输入，再看问题</strong>
+            <p>
+              可以只分析一个模型，也可以与以前效果好的模型比较。原始图片、标签和权重只读。
+            </p>
+          </div>
+          <button id="demo" class="secondary">载入本机复现案例</button>
+        </div>
+        <form id="analysis-form">
+          <div class="columns">
+            <div>
+              <article>
+                <div class="section-heading">
+                  <span class="step">1</span>
+                  <h2>选择这次要分析的内容</h2>
+                </div>
+                <label for="name">任务名称</label
+                ><input
+                  id="name"
+                  name="name"
+                  maxlength="100"
+                  required
+                  placeholder="例如：眼镜与水瓶 · 914 对比 9132"
+                />
+                <label for="model_family">YOLO 系列 / 任务</label>
+                <select id="model_family" name="model_family">
+                  <option value="auto">自动识别权重</option>
+                  <option value="v8">YOLOv8</option>
+                  <option value="v9">YOLOv9</option>
+                  <option value="v10">YOLOv10</option>
+                  <option value="v11">YOLO11</option>
+                  <option value="v12">YOLO12</option>
+                  <option value="v26">YOLO26</option>
+                </select>
+                <p class="hint">
+                  这里用于记录和校验你的选择；真正的系列仍以 .pt
+                  权重内容为准。目前诊断任务支持目标检测（detect），不支持分类、分割、姿态和
+                  OBB。
+                </p>
+                <label for="model"
+                  >问题模型 <span class="required">必选</span></label
+                >
+                <div class="file-input">
+                  <input
+                    id="model"
+                    name="model"
+                    required
+                    placeholder="选择一个 .pt 权重文件"
+                  /><button type="button" data-browse="model">浏览…</button>
+                </div>
+                <p class="hint">你想检查的模型。报告中称为“当前模型”。</p>
+                <label for="baseline"
+                  >对照模型 <span class="optional">可选</span></label
+                >
+                <div class="file-input">
+                  <input
+                    id="baseline"
+                    name="baseline"
+                    placeholder="以前效果好的 .pt；也可以留空"
+                  /><button type="button" data-browse="baseline">浏览…</button>
+                </div>
+                <p class="hint">
+                  两份模型使用同一批图、同样参数比较。对照模型也可能犯错。
+                </p>
+                <label for="data"
+                  >数据集配置 <span class="required">必选</span></label
+                >
+                <div class="file-input">
+                  <input
+                    id="data"
+                    name="data"
+                    required
+                    placeholder="选择 data.yaml 或数据集 .yml 文件"
+                  /><button type="button" data-browse="data">浏览…</button>
+                </div>
+                <p class="hint">
+                  配置应包含 names 类别名称，以及 test 或 val
+                  图片路径。图片需要对应的 YOLO 检测标签。
+                </p>
+                <div id="dataset-preview" class="dataset-preview">
+                  选择配置后，这里会显示类别和数据分组。
+                </div>
+              </article>
+              <article>
+                <div class="section-heading">
+                  <span class="step">2</span>
+                  <h2>设置分析条件</h2>
+                </div>
+                <div class="field-grid">
+                  <div>
+                    <label for="split">分析哪个分组</label
+                    ><select id="split" name="split">
+                      <option value="test">test · 测试集</option>
+                      <option value="val">val · 验证集</option>
+                    </select>
+                    <p class="hint">
+                      评估最终效果优先 test；调参数使用
+                      val。分组是否独立仍需核实。
+                    </p>
+                  </div>
+                  <div>
+                    <label for="device">使用什么设备</label
+                    ><select id="device" name="device">
+                      <option value="0">GPU 0 · NVIDIA 显卡</option>
+                      <option value="cpu">CPU · 无显卡也能运行</option>
+                    </select>
+                    <p class="hint">GPU 通常更快；显卡不可用时选择 CPU。</p>
+                  </div>
+                  <div>
+                    <label for="imgsz">推理尺寸 imgsz</label
+                    ><input
+                      id="imgsz"
+                      name="imgsz"
+                      type="number"
+                      min="32"
+                      max="4096"
+                      step="32"
+                      required
+                      value="1024"
+                    />
+                    <p class="hint">
+                      图片送入模型时的尺寸。先和实际使用保持一致；640 与 1024
+                      可能产生不同错误。
+                    </p>
+                  </div>
+                  <div>
+                    <label for="conf">置信度 conf</label
+                    ><input
+                      id="conf"
+                      name="conf"
+                      type="number"
+                      min="0.002"
+                      max="0.999"
+                      step="0.001"
+                      required
+                      value="0.25"
+                    />
+                    <p class="hint">
+                      多有把握的预测才显示出来。降低可能找回目标，也可能增加误报。
+                    </p>
+                  </div>
+                </div>
+                <details>
+                  <summary>进阶设置：匹配框的严格程度</summary>
+                  <label for="match_iou">匹配 IoU</label
+                  ><input
+                    id="match_iou"
+                    name="match_iou"
+                    type="number"
+                    min="0.01"
+                    max="0.99"
+                    step="0.01"
+                    required
+                    value="0.5"
+                  />
+                  <p class="hint">
+                    预测框与标注框重合多少才算匹配。0.5
+                    是本项目默认值；它不是去重用的 NMS IoU。
+                  </p>
+                </details>
+              </article>
+
+              <article>
+                <div class="step-heading">
+                  <span>3</span>
+                  <h2>补充证据（可选，提供后报告更有针对性）</h2>
+                </div>
+                <p>
+                  没有的资料可以留空。内容会记录为用户提供；系统不会把填报说明自动当成确诊依据。
+                </p>
+                <label for="train_run">当前模型训练结果目录</label>
+                <div class="file-input">
+                  <input
+                    id="train_run"
+                    name="train_run"
+                    placeholder="包含 results.csv、args.yaml 的文件夹"
+                  /><button type="button" data-browse="train_run">浏览…</button>
+                </div>
+                <label for="baseline_run">对照模型训练结果目录</label>
+                <div class="file-input">
+                  <input
+                    id="baseline_run"
+                    name="baseline_run"
+                    placeholder="没有保存可以留空"
+                  /><button type="button" data-browse="baseline_run">
+                    浏览…
+                  </button>
+                </div>
+                <label for="context_text">问题描述（用普通文字填写即可）</label>
+                <textarea
+                  id="context_text"
+                  name="context_text"
+                  rows="4"
+                  placeholder="例如：现场发现 914 有时把眼镜识别成面包；发生在什么距离、光线和设备上？你已经确认或怀疑什么？不知道的可以写“未知”。"
+                ></textarea>
+                <p class="hint">
+                  这里不是
+                  JSON。你可以直接写人话；系统会把它作为“用户提供的背景信息”，不会自动当成确诊原因。
+                </p>
+                <label for="context">现场配置/类别规则（可选 JSON 文件）</label>
+                <div class="file-input">
+                  <input
+                    id="context"
+                    name="context"
+                    placeholder="只有有结构化配置时才选择；没有可留空"
+                  /><button type="button" data-browse="context">浏览…</button>
+                </div>
+                <label for="metadata">逐图场景表（可选 CSV）</label>
+                <div class="file-input">
+                  <input
+                    id="metadata"
+                    name="metadata"
+                    placeholder="拍摄批次、光照、遮挡、现场失败与复核状态"
+                  /><button type="button" data-browse="metadata">浏览…</button>
+                </div>
+                <p class="hint">
+                  逐图场景不是标签文件：它是“每张图片是在什么条件下拍的”备注表，例如批次、光线、角度、遮挡、距离，以及是否为你确认的现场失败图。没有这些信息可以留空，不影响基本诊断。
+                </p>
+                <p>
+                  <button
+                    type="button"
+                    class="text-button"
+                    data-page="materials"
+                  >
+                    查看全部所需数据、模板与诊断依据 →
+                  </button>
+                </p>
+              </article>
+            </div>
+            <div class="side-guide">
+              <article>
+                <h2>报告会告诉你什么</h2>
+                <ol class="guide-list">
+                  <li>
+                    <strong>哪一类表现差</strong
+                    ><span>逐类召回率、精确率、AP 和样本数量。</span>
+                  </li>
+                  <li>
+                    <strong>哪些图出了问题</strong
+                    ><span>标注、预测和错误候选框对照。</span>
+                  </li>
+                  <li>
+                    <strong>属于哪种错误</strong
+                    ><span>类别混淆、框不完整、漏检和背景误报。</span>
+                  </li>
+                  <li>
+                    <strong>新模型有什么变化</strong
+                    ><span>同一个目标的改善或退步。</span>
+                  </li>
+                </ol>
+                <div class="note">
+                  报告中的原因线索需要证据复核，不会自动修改你的标注或重新训练模型。
+                </div>
+              </article>
+              <article>
+                <h3>第一次使用</h3>
+                <p>
+                  点击“载入本机复现案例”，使用已找到的两张眼镜图片。选择 640
+                  尺寸，可以重复检查 914 把眼镜识别成面包的问题。
+                </p>
+                <button type="button" class="text-button" data-page="help">
+                  查看完整使用步骤 →
+                </button>
+              </article>
+            </div>
+          </div>
+          <div class="action-bar">
+            <div>
+              <strong id="ready-text">配置完成后即可开始</strong>
+              <p>只在点击按钮后运行。结果自动保存到 reports 文件夹。</p>
+            </div>
+            <button type="submit" id="start" class="primary">开始分析 →</button>
+          </div>
+        </form>
+      </section>
+      <section id="page-task" class="page" hidden>
+        <div id="no-task" class="empty">
+          <h2>还没有选中的任务</h2>
+          <p>新建一次分析，或在历史报告中打开任务详情。</p>
+          <button class="primary" data-page="new">新建分析</button>
+        </div>
+        <div id="task-content" hidden>
+          <article>
+            <div class="task-top">
+              <div>
+                <span id="task-status" class="badge"></span>
+                <h2 id="task-name"></h2>
+              </div>
+              <button id="cancel" class="danger" hidden>取消分析</button>
+            </div>
+            <p id="task-phase"></p>
+            <progress id="task-progress" max="100"></progress>
+            <div id="task-config" class="config-summary"></div>
+            <div id="task-error" class="note error" hidden></div>
+            <div class="task-actions">
+              <a
+                id="open-report"
+                class="primary button"
+                target="_blank"
+                rel="noopener"
+                hidden
+                >打开分析报告 ↗</a
+              ><button id="task-ai" data-page="ai">用 AI 进一步诊断</button
+              ><button id="reuse" class="secondary">复用这些设置</button
+              ><button class="text-button" data-page="history">
+                全部历史任务 →
+              </button>
+            </div>
+          </article>
+          <article>
+            <h2>运行日志</h2>
+            <p class="hint">
+              这里保留分析进度和具体报错。遇到问题时，可以选中复制给开发者。
+            </p>
+            <pre id="task-log" tabindex="0"></pre>
+          </article>
+        </div>
+      </section>
+      <section id="page-history" class="page" hidden>
+        <div class="history-toolbar">
+          <input
+            id="history-search"
+            aria-label="搜索历史任务"
+            placeholder="搜索任务名称或模型路径"
+          /><select id="history-filter" aria-label="筛选任务状态">
+            <option value="all">全部状态</option>
+            <option value="completed">已完成</option>
+            <option value="running">运行中</option>
+            <option value="failed">失败 / 中断 / 取消</option>
+          </select>
+        </div>
+        <div id="history-list"></div>
+      </section>
+      <section id="page-materials" class="page" hidden>
+        <article>
+          <h2>你可以提供哪些数据</h2>
+          <p>
+            资料越完整，越能验证和排除具体解释；资料数量不是诊断准确率。以下清单明确标出当前程序能够读取的内容和仍需人工复核的材料。
+          </p>
+          <p>
+            <a href="/templates/context.json" download
+              >下载补充资料 JSON 模板</a
+            >
+            · <a href="/templates/scenes.csv" download>下载场景 CSV 模板</a> ·
+            <a href="/templates/数据准备与诊断依据.md" download
+              >下载详细数据与算法说明</a
+            >
+          </p>
+          <div id="data-guide"></div>
+        </article>
+        <article>
+          <h2>诊断依据与算法</h2>
+          <p>
+            已确认的错误表现、已确认的数据问题、待验证病因和建议分别展示。没有受控证据时，已确诊根因数量为
+            0。
+          </p>
+          <div id="algorithm-guide"></div>
+        </article>
+      </section>
+      <section id="page-ai" class="page" hidden>
+        <div class="note">
+          AI
+          是辅助顾问。只会发送下方预览中的文本及你选中的图片，不发送模型权重。建议需人工复核，不会自动改标签或训练。图片功能需要服务商和模型支持视觉输入。
+        </div>
+        <article>
+          <h2>1. 配置你的 AI API</h2>
+          <p>
+            支持 Chat Completions 兼容协议；填写完整接口地址和服务商提供的模型
+            ID。本机 Ollama 可用 http://127.0.0.1:11434/v1/chat/completions。
+          </p>
+          <button id="ai-deepseek" class="secondary">
+            填入 DeepSeek 4.1 配置
+          </button>
+          <p class="hint">
+            官方 DeepSeek‑V4.1‑Flash：模型 ID 为
+            deepseek-flash。预设只填写配置，不连接或发送数据。
+          </p>
+          <form id="ai-config-form">
+            <label for="ai-endpoint">完整 API 地址</label
+            ><input
+              id="ai-endpoint"
+              required
+              placeholder="https://你的服务商/v1/chat/completions"
+            /><label for="ai-model">模型 ID</label
+            ><input
+              id="ai-model"
+              required
+              placeholder="服务商提供的模型名称"
+            /><label for="ai-key">API Key（仅服务内存，重启后需重填）</label
+            ><input
+              id="ai-key"
+              type="password"
+              autocomplete="off"
+              placeholder="本机无鉴权服务可留空；已配置时留空保留"
+            /><label for="ai-max-tokens">最大输出 token</label
+            ><input
+              id="ai-max-tokens"
+              type="number"
+              min="256"
+              max="16000"
+              value="3000"
+            /><label
+              ><input id="ai-clear-key" type="checkbox" />清除之前保留的
+              Key</label
+            >
+            <p id="ai-config-status"></p>
+            <button class="primary">保存连接配置（不发送诊断数据）</button>
+          </form>
+        </article>
+        <article>
+          <h2>2. 选择报告和证据</h2>
+          <label for="ai-job">已完成报告</label
+          ><select id="ai-job"></select
+          ><label for="ai-question">希望 AI 帮你解决什么</label
+          ><textarea id="ai-question" rows="4">
+请根据证据编号，区分已确认结果与未确诊病因，提出需要补充的数据、标注修订建议，以及最值得先做的单变量实验和验收标准。</textarea
+          ><label
+            ><input
+              id="ai-include-context"
+              type="checkbox"
+            />附加本报告的用户补充
+            JSON（可能包含业务信息或本地路径，先检查预览）</label
+          >
+          <details>
+            <summary>可选：附加图片，最多 4 张</summary>
+            <p>
+              图片编号与报告一致。发送的是报告 JPEG 预览，不是权重或整个数据集。
+            </p>
+            <div id="ai-images" class="image-options"></div>
+          </details>
+          <label for="ai-previous">追问时可附加之前的回答</label
+          ><select id="ai-previous">
+            <option value="">不附加历史回答</option></select
+          ><button id="ai-preview" class="primary">生成发送预览</button>
+        </article>
+        <article id="ai-preview-panel" hidden>
+          <h2>3. 检查内容后发送</h2>
+          <p id="ai-destination"></p>
+          <details>
+            <summary>发送的系统规则</summary>
+            <pre id="ai-system"></pre>
+          </details>
+          <pre id="ai-packet"></pre>
+          <div id="ai-attachments" class="image-options"></div>
+          <details id="ai-previous-preview" hidden>
+            <summary>还会发送的历史 AI 回答（非确诊证据）</summary>
+            <pre id="ai-previous-text"></pre>
+          </details>
+          <label
+            ><input
+              id="ai-consent"
+              type="checkbox"
+            />我已核对接收地址和上述文本、图片，同意发送；服务商可能按其规则计费。</label
+          ><button id="ai-send" class="primary" disabled>
+            发送当前预览，请 AI 诊断
+          </button>
+        </article>
+        <article>
+          <h2>AI 辅助意见与历史</h2>
+          <p id="ai-status" role="status"></p>
+          <pre id="ai-answer"></pre>
+          <button id="ai-export" hidden>下载当前 AI 意见 TXT</button>
+          <div id="ai-history"></div>
+        </article>
+      </section>
+      <section id="page-help" class="page" hidden>
+        <div class="columns">
+          <article>
+            <h2>从启动到看懂报告</h2>
+            <ol class="help-list">
+              <li>
+                <strong>启动程序</strong>
+                <p>
+                  双击桌面“YOLO 诊断助手”，或项目里的
+                  start.sh。浏览器只是界面，计算在本机 Python 中完成。
+                </p>
+              </li>
+              <li>
+                <strong>选择模型和数据</strong>
+                <p>
+                  问题模型必选，对照模型可留空。用“浏览”按钮选择 .pt 和
+                  data.yaml，不需要上传文件。
+                </p>
+              </li>
+              <li>
+                <strong>先用实际使用参数</strong>
+                <p>
+                  例如实际预测使用 640，就先分析 640。随后只改为 1024
+                  再运行一次，比较尺寸影响。
+                </p>
+              </li>
+              <li>
+                <strong>等待分析完成</strong>
+                <p>
+                  可以切换页面、关闭网页后重新打开。每次只运行一个任务。取消会停止计算，保留已有日志。
+                </p>
+              </li>
+              <li>
+                <strong>先看错误图，再看总分</strong>
+                <p>
+                  在报告中选择类别。红色标注框表示未正确匹配；候选框解释帮助区分错分类和定位不足。对比结果使用相同标注目标。
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article>
+            <h2>常见问题</h2>
+            <details open>
+              <summary>只有图片，没有标签，可以分析吗？</summary>
+              <p>
+                这一版需要带标签的数据才能计算漏检和正确率。空 TXT
+                表示已确认的背景图；缺少 TXT 会报错，不能自动当背景。
+              </p>
+            </details>
+            <details>
+              <summary>只有图片文件夹，没有 data.yaml？</summary>
+              <p>
+                可以使用 EzYOLO 导出的训练数据配置。标准目录包含
+                images/test、labels/test，并在 YAML 中填写 names 和 test
+                路径。开发文档提供了示例。
+              </p>
+            </details>
+            <details>
+              <summary>“未正确检出”就是没有看到吗？</summary>
+              <p>
+                不一定。类别错、框不完整、框重合不够都会造成
+                FN。先看候选预测的类别、置信度和 IoU。
+              </p>
+            </details>
+            <details>
+              <summary>显存不足或 CUDA 不可用怎么办？</summary>
+              <p>
+                先确认选择了正确设备。可换 CPU，或用较低尺寸另跑。程序推理批量为
+                1，避免大模型一次装入多张图。
+              </p>
+            </details>
+            <details>
+              <summary>模型类别不一致或标签有问题怎么办？</summary>
+              <p>
+                查看日志末尾给出的文件和原因。类别名称相同、顺序不同会自动对齐；类别名称缺失或不同需要先人工确认对应关系。
+              </p>
+            </details>
+            <details>
+              <summary>高分为什么现场还会错？</summary>
+              <p>
+                测试图可能不覆盖现场的光照、角度、尺度或遮挡；也可能与训练图重复。不要用反复调参使用过的图片证明独立泛化。
+              </p>
+            </details>
+          </article>
+        </div>
+        <article>
+          <h2>项目结构：以后想改哪里，就找哪里</h2>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>文件 / 文件夹</th>
+                  <th>负责什么</th>
+                  <th>什么时候改</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>main.py</td>
+                  <td>启动服务、文件选择、接口</td>
+                  <td>新增一个界面需要调用的接口</td>
+                </tr>
+                <tr>
+                  <td>core/tasks.py</td>
+                  <td>后台运行、取消、日志、历史记录</td>
+                  <td>调整任务调度或保存内容</td>
+                </tr>
+                <tr>
+                  <td>core/analyzer.py</td>
+                  <td>读数据、模型推理、指标和错误证据</td>
+                  <td>增加新的诊断规则或分组统计</td>
+                </tr>
+                <tr>
+                  <td>ui/index.html</td>
+                  <td>页面文字与表单结构</td>
+                  <td>修改中文说明或增加输入项</td>
+                </tr>
+                <tr>
+                  <td>ui/app.js / style.css</td>
+                  <td>按钮行为 / 配色布局</td>
+                  <td>修改交互或界面样式</td>
+                </tr>
+                <tr>
+                  <td>ui/report.html</td>
+                  <td>分析结果的报告模板</td>
+                  <td>增加图表或错误展示</td>
+                </tr>
+                <tr>
+                  <td>data/</td>
+                  <td>配置、任务记录和日志</td>
+                  <td>一般不用手改；可备份</td>
+                </tr>
+                <tr>
+                  <td>reports/</td>
+                  <td>每次分析的完整输出</td>
+                  <td>查看、备份和分享整个报告文件夹</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">
+            这是独立的诊断项目，不需要修改 EzYOLO，也不需要阅读整个 Ultralytics
+            源码。详细安装、开发和参数说明在项目根目录 README.md。
+          </p>
+        </article>
+      </section>
+      <footer>
+        YOLO 诊断助手 · 当前支持水平框目标检测 · 数据与模型的训练关系需要你确认
+      </footer>
+    </main>
+    <dialog id="file-dialog" aria-labelledby="file-title">
+      <div class="dialog-header">
+        <h2 id="file-title">选择文件</h2>
+        <button id="close-browser" aria-label="关闭文件选择窗口">✕</button>
+      </div>
+      <p class="hint">
+        直接选择电脑里的文件，不会上传。点击文件夹进入，点击文件选用。
+      </p>
+      <form id="browse-form" class="browse-address">
+        <input id="browse-path" aria-label="当前文件夹路径" /><button>
+          前往
+        </button>
+      </form>
+      <div class="browse-shortcuts">
+        <button id="browse-parent">上一级</button
+        ><button data-place="home">主目录</button
+        ><button data-place="Desktop">桌面</button
+        ><button data-place="Downloads">下载</button>
+      </div>
+      <p id="browse-error" role="alert"></p>
+      <div id="file-list"></div>
+      <button id="choose-directory" hidden>选择当前文件夹</button>
+    </dialog>
+    <script src="/ui/app.js"></script>
+    <script src="/ui/ai.js"></script>
+  </body>
+</html>

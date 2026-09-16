@@ -1,0 +1,2 @@
+ultralytics==8.4.54
+tidecv==1.0.1
